@@ -1,6 +1,6 @@
 import numpy as np 
 
-def analytic_delta(lat, long, w_rot, w_orb, obliq, i, sol_phase, orb_pos, sub_long, time, theta, phi): 
+def analytic_delta(w_rot, w_orb, obliq, i, sol_phase, orb_pos, sub_long, time, theta, phi): 
 
     #First checking to make sure all input parameters are in bounds 
 
@@ -20,7 +20,7 @@ def analytic_delta(lat, long, w_rot, w_orb, obliq, i, sol_phase, orb_pos, sub_lo
     elif (sol_phase < 0 or sol_phase >= 2*np.pi): 
         raise ValueError("Values for solstice phase must be [0,2pi[")
     else: 
-        print("All is well.")
+        print("")
     
     flux = []
 
@@ -51,9 +51,7 @@ def analytic_delta(lat, long, w_rot, w_orb, obliq, i, sol_phase, orb_pos, sub_lo
 
 
 #Testing
-time = [1,1,1]
-lat = 2
-long = 1 
+time = [1,2,3,4,5,6,7,8,9,10]
 w_rot = 1
 w_orb = 1
 obliq = 1
@@ -61,10 +59,38 @@ i =1
 sol_phase = 1
 orb_pos = 1
 sub_long = 1
-theta = np.pi/4
+theta_1 = np.pi/4
 phi = np.pi/4
 
-print(analytic_delta(lat, long, w_rot, w_orb, obliq, i, sol_phase, orb_pos, sub_long, time, theta, phi))
+theta_2 = np.pi/5
+theta_3 = np.pi/5
+theta_4 = np.pi/6
+
+array_1 = analytic_delta(w_rot, w_orb, obliq, i, sol_phase, orb_pos, sub_long, time, theta_1, phi)
+array_2 = analytic_delta(w_rot, w_orb, obliq, i, sol_phase, orb_pos, sub_long, time, theta_2, phi)
+array_3 = analytic_delta(w_rot, w_orb, obliq, i, sol_phase, orb_pos, sub_long, time, theta_3, phi)
+array_4 = analytic_delta(w_rot, w_orb, obliq, i, sol_phase, orb_pos, sub_long, time, theta_4, phi)
+
+import matplotlib.pyplot as plt 
+plt.plot(array_1)
+plt.ylabel('flux')
+plt.xlabel('time(rotations)')
+plt.show()
+
+plt.plot(array_2)
+plt.ylabel('flux')
+plt.xlabel('time(rotations)')
+plt.show()
+
+plt.plot(array_3)
+plt.ylabel('flux')
+plt.xlabel('time(rotations)')
+plt.show()
+
+plt.plot(array_4)
+plt.ylabel('flux')
+plt.xlabel('time(rotations)')
+plt.show()
 
 
         
