@@ -48,10 +48,15 @@ def analytic_delta(w_rot, w_orb, obliq, i, sol_phase, orb_pos, sub_long, time, t
         flux.append(single_flux)
     return flux 
 
-
-
 #Testing
-time = [1,2,3,4,5,6,7,8,9,10]
+time = []
+y = 0
+for y in range (0, 100):
+    y = y/10.0
+    time.append(y)
+    print(y)
+print(time)
+
 w_rot = 1
 w_orb = 1
 obliq = 1
@@ -71,28 +76,31 @@ array_2 = analytic_delta(w_rot, w_orb, obliq, i, sol_phase, orb_pos, sub_long, t
 array_3 = analytic_delta(w_rot, w_orb, obliq, i, sol_phase, orb_pos, sub_long, time, theta_3, phi)
 array_4 = analytic_delta(w_rot, w_orb, obliq, i, sol_phase, orb_pos, sub_long, time, theta_4, phi)
 
-import matplotlib.pyplot as plt 
+
+import matplotlib.pyplot as plt
+plt.subplot(4,1,1)
 plt.plot(array_1)
 plt.ylabel('flux')
 plt.xlabel('time(rotations)')
-plt.show()
 
+plt.subplot(4,1,2)
 plt.plot(array_2)
 plt.ylabel('flux')
 plt.xlabel('time(rotations)')
-plt.show()
 
+plt.subplot(4,1,3)
 plt.plot(array_3)
 plt.ylabel('flux')
 plt.xlabel('time(rotations)')
-plt.show()
 
+
+plt.subplot(4,1,4)
 plt.plot(array_4)
 plt.ylabel('flux')
 plt.xlabel('time(rotations)')
+
 plt.show()
-
-
+exit(0)
         
 
 
