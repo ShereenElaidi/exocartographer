@@ -4,7 +4,7 @@ import numpy as np
 
 time = []
 y = 0
-for y in range (0, 100):
+for y in range (0, 10):
     y = y/10.0
     time.append(y)
     print(y)
@@ -51,3 +51,5 @@ plt.ylabel('flux')
 plt.xlabel('time(rotations)')
 
 plt.show()
+
+
