@@ -3,46 +3,25 @@ from analytic_kernel import kernel
 import numpy as np
 from scipy.integrate import dblquad
 
+# Basic integration: double integral, Kernel*map*sintheta
 
+
+# TODO: ask about this:
 def map(lat, lng):
     return lat*lng
 
-def get_kernel(lat, lng, t, wrot, worb, obq, inc, xisol, xi0):
-    view = viewgeom(t,wrot, worb, obq, inc, xisol, xi0)
+def get_kernel(times, wrot, worb, obq, inc, xisol, xi0, lat, lng):
+    view_geom = viewgeom(times, wrot, worb, obq, inc, xisol, xi0)
     sth = np.sin(lat)
     cth = np.cos(lat)
-    sph = np.sin(lng)
+    sph = np.sin(lat)
     cph = np.cos(lng)
-    return kernel(sth, cth,sph, cph, view)
+    return kernel(sth, cth, sph, cph, view_geom)
 
-
-lat = 0
-lng = 0
-worb = 2
-t = np.array([1])
-wrot = 1
-orb = 1
-obq = np.pi/3
-inc = np.pi/2
-xisol = np.pi
-xi0 = 1
-
-if (worb < 0):
-    raise ValueError("Values for w_orb must be bigger than 0.")
-# Obliquity
-elif (obq > np.pi / 2 or obq < 0):
-    raise ValueError("Values for obliquity must be [0, pi/2]")
-# Inclination
-elif (inc < 0 or inc > np.pi):
-    raise ValueError("Values for inclination must be [0,pi]")
-# Solstice phase
-elif (xisol < 0 or xisol >= 2 * np.pi):
-    raise ValueError("Values for solstice phase must be [0,2pi[")
-else:
-    print("")
-
-def compute_flux(lat,lng, t, wrot, worb, obq, inc, xisol, xi0):
-    integrand = get_kernel(lat, lng, t, wrot, worb, obq, inc, xisol, xi0) * map(lat, lng) * np.sin(lat)
-    flux = dblquad(lambda lat, lng: integrand, 0, np.pi, lambda theta: 0, lambda theta: 2 * np.pi)[0]
-    print(flux)
-
+def numerically_integrate(lat, lng, times, wrot, worb, obq, inc, xisol, xi0):
+    flux = []
+    integrand = get_kernel(times, wrot, worb, obq, inc, xisol, xi0, lat, lng)
+    for t in range(0, len(integrand)):
+        flux.append(dblquad(lambda lat, lng: integrand[t], 0, np.pi, lambda theta:0,
+                       lambda theta: 2*np.pi)[0])
+    return flux
