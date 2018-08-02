@@ -1,25 +1,7 @@
-import numpy as np 
+import numpy as np
 
 def analytic_delta(w_rot, w_orb, obliq, i, sol_phase, orb_pos, sub_long, time, theta, phi): 
 
-    #First checking to make sure all input parameters are in bounds
-    #w_orb
-    # if(w_orb < 0):
-    #     raise ValueError("Values for w_orb must be bigger than 0.")
-    #
-    # #Obliquity
-    # elif (obliq > np.pi/2 or obliq < 0 ):
-    #     raise ValueError("Values for obliquity must be [0, pi/2]")
-    #
-    # #Inclination
-    # elif (i < 0 or i > np.pi):
-    #     raise ValueError("Values for inclination must be [0,pi]")
-    #
-    # #Solstice phase
-    # elif (sol_phase < 0 or sol_phase >= 2*np.pi):
-    #     raise ValueError("Values for solstice phase must be [0,2pi[")
-    # else:
-    #     print("")
     
     flux = []
 

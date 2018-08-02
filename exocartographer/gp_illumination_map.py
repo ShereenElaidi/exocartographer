@@ -622,6 +622,8 @@ class IlluminationMapPosterior(object):
         hpmap = self.hpmap(p)
 
         map_lc = np.dot(V, hpmap)
+        print("Map's lightcurve")
+        print(map_lc)
 
         return map_lc
 
