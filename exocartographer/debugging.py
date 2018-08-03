@@ -10,6 +10,8 @@ from astropy_healpix import HEALPix
 from astropy.coordinates import Angle
 import astropy.units as u
 import matplotlib.gridspec  as gridspec
+from exocartographer import viewgeom, kernel
+import math
 
 # Helper Functions
 
@@ -61,7 +63,7 @@ def draw_albedo_map(nside, view_map, bright_spot):
         hp.mollview(simulated_map, title='albedo', cmap='gist_gray')
     return simulated_map
 
-# (3) A function to produce the *visibility* plot
+# (3) A function to produce the *visibility* plot. This is lifted from the *analytic* code.
 def Vnz (colat, lng, i, obq, sol_phase, times):
     times = times
     p_rotation = 23.934
@@ -194,7 +196,7 @@ def Vnz (colat, lng, i, obq, sol_phase, times):
     Vnz = np.sin(theta) * sin_theta_knot * cos_phi_phi_knot + np.cos(theta) * cos_theta_knot
     return np.maximum(Vnz, 0)
 
-# (4) A function to produce the *illumination* plot
+# (4) A function to produce the *illumination* plot. This is lifted from the *analytic* code.
 def Inz (colat, lng, i, obq, sol_phase, times):
     times = times
     p_rotation = 23.934
@@ -326,6 +328,8 @@ def Inz (colat, lng, i, obq, sol_phase, times):
 
 # Setting the orbital properties for the numeric solution
 nside = 4
+
+# From the numeric solution: exocartographer uses order = ring.
 order = 'ring'
 map = HEALPix(nside=nside, order=order)
 
@@ -334,18 +338,21 @@ p_rotation = 23.934
 p_orbit = 365.256363 * 24.0
 
 # Setting the inputs up for the analytic and numeric solutions
+
+# Creating an evenly-spaced time array containing num # of points
 times = np.linspace(start=0.0, stop=24.0, num=1400)
 measurement_std = 0.001
+
+# Setting the input parameters
 w_rot = 2*np.pi/p_rotation
 w_orb = 2*np.pi/p_orbit
-
 inclination = np.pi/4
 obliquity = np.pi/6
-sol_phase = np.pi/4
+sol_phase = np.pi/6
 
-# Using relation (3) here
-phi_orb = abs((1*(np.pi/4)) - sol_phase)
-phi_rot = abs((1*(np.pi/4)) + sol_phase)
+# Using the relation from the code here
+phi_orb = 0                     # xi_0
+obl_orientation = sol_phase     # xi_s
 
 # Drawing the simulated map. Same longitude, but varying co-latitudes
 lat_1 = Angle((np.pi/2)*u.rad)
@@ -406,7 +413,7 @@ true_params = {
     'logit_cos_inc':logit(np.cos(inclination)),
     'logit_cos_obl':logit(np.cos(obliquity)),
     'logit_phi_orb':logit(phi_orb, low=0, high=2*np.pi),
-    'logit_obl_orientation':logit(phi_rot, low=0, high=2*np.pi)
+    'logit_obl_orientation':logit(obl_orientation, low=0, high=2*np.pi)
 }
 
 
@@ -422,6 +429,15 @@ numeric_2 = truth.lightcurve(p_2)
 numeric_3 = truth.lightcurve(p_3)
 numeric_4 = truth.lightcurve(p_4)
 numeric_5 = truth.lightcurve(p_5)
+
+
+# Trying to use the analytic_visibility_illumination kernel
+num_1 = truth.analytic_visibility_illumination_matrix(p_1)
+num_2 = truth.analytic_visibility_illumination_matrix(p_2)
+num_3 = truth.analytic_visibility_illumination_matrix(p_3)
+num_4 = truth.analytic_visibility_illumination_matrix(p_4)
+num_5 = truth.analytic_visibility_illumination_matrix(p_5)
+
 
 # Making the big plot
 fig=plt.figure()
@@ -520,8 +536,8 @@ fig.tight_layout()
 fig.subplots_adjust(hspace=0)
 
 # Saving the figure
-title = 'plots/[Debugged?]CONTOUR PLOT, i={}, obq={}, sph={}, time=0{}h.pdf'.format(inclination, obliquity, sol_phase, time)
-fig.savefig(title)
+title = 'plots/[Side-by-side]CONTOUR PLOT, i={}, obq={}, sph={}, time=0{}h.pdf'.format(inc, obl, xi_sol, time)
+# fig.savefig(title)
 
 plt.show()
 
@@ -556,8 +572,222 @@ plt.scatter([-0.8], [1.5708], c='#0306bc')
 CS1 = plt.contour(X,Y,V, 6, colors='r')
 CS2 = plt.contour(X,Y,I, 6, colors='b')
 
-title = 'plots/[Only]CONTOUR PLOT, i={}, obq={}, sph={}, time=0{}h.pdf'.format(inclination, obliquity, sol_phase, time)
-fig2.savefig(title)
+title = 'plots/[Just contour plot]CONTOUR PLOT, i={}, obq={}, sph={}, time=0{}h.pdf'.format(inc, obl, xi_sol, time)
+# fig2.savefig(title)
 plt.show()
 
-# Next part of debugging: obtaining phi_obs and phi_stellar
+# Next part of debugging: obtaining phi_obs and phi_stellar. First,
+# going to obtain the analytic versions
+
+def get_phi_s(colat, lng, w_rot, w_orb, obq, i, sol_phase, times, nside):
+    # (C1)
+    cos_theta_knot = (np.cos(i)*np.cos(obq)) + (np.sin(i)*np.sin(obq)*np.cos(sol_phase))
+    sin_theta_knot = np.sqrt(1-(cos_theta_knot**2))
+
+    if i == np.pi/2:
+        # (C1) Orbital Inclination
+        cos_theta_knot = np.sin(obq)*np.cos(sol_phase)
+
+        # (C12)
+        cos_phi_s_1 = (np.cos(w_rot*times))*(np.cos(w_orb*times) - cos_theta_knot*np.sin(obq)*np.cos(w_orb*times-sol_phase))
+        cos_phi_s_2 = np.sin(w_rot*times)*np.sin(w_orb*times)*np.cos(obq)
+        cos_phi_s_3 = sin_theta_knot*(np.sqrt(1-((((np.sin(obq))**2)*((np.cos(w_orb*times-sol_phase))**2)))))
+        cos_phi_s = (cos_phi_s_1+cos_phi_s_2)/(cos_phi_s_3)
+
+        # (C13)
+        sin_phi_s_1 = -np.sin(w_rot*times)*(np.cos(w_orb*times)-cos_theta_knot*np.sin(obq)*np.cos(w_orb*times-sol_phase))
+        sin_phi_s_2 = np.cos(w_rot*times)*np.sin(w_orb*times)*np.cos(obq)
+        sin_phi_s_3 = sin_theta_knot*(np.sqrt(1-(((np.sin(obq))**2)*((np.cos(w_orb*times-sol_phase))**2))))
+        sin_phi_s = (sin_phi_s_1+sin_phi_s_2)/sin_phi_s_3
+
+    elif i == 0 :
+
+        # (C14)
+        cos_phi_s_1 = -np.cos(w_rot*times)*np.cos(obq)*np.cos(w_orb*times-sol_phase)
+        cos_phi_s_2 = np.sin(w_rot*times)*np.sin(w_orb*times-sol_phase)
+        cos_phi_s_3 = np.sqrt(1-((((np.sin(obq))**2))*((np.cos(w_orb*times-sol_phase))**2)))
+        cos_phi_s = (cos_phi_s_1-cos_phi_s_2)/cos_phi_s_3
+
+        # (C15)
+        sin_phi_s_1 = np.sin(w_rot*times)*np.cos(obq)*np.cos(w_orb*times-sol_phase)
+        sin_phi_s_2 = np.cos(w_rot*times)*np.sin(w_orb*times-sol_phase)
+        sin_phi_s_3 = np.sqrt(1-(((np.sin(obq))**2)*((np.cos(w_orb*times-sol_phase))**2)))
+        sin_phi_s = (sin_phi_s_1-sin_phi_s_2)/sin_phi_s_3
+
+    elif obq == 0:
+        cos_phi_s = np.cos((w_orb-w_rot)*times)
+        sin_phi_s = np.sin((w_orb-w_rot)*times)
+
+    elif obq == np.pi/2:
+        # (C20)
+        cos_theta_knot = np.sin(i)*np.sin(obq)*np.cos(sol_phase)
+
+        # (C22)
+        cos_phi_s_1 = np.cos(w_rot*times)*(np.sin(i)*np.cos(w_orb*times) - cos_theta_knot*np.cos(w_orb*times-sol_phase))
+        cos_phi_s_2 = np.sin(w_rot*times)*np.cos(i)*np.sin(w_orb*times-sol_phase)
+        cos_phi_s_3 = np.sqrt(1-(((np.sin(i))**2)*((np.cos(sol_phase))**2)))
+        cos_phi_s_4 = np.sin(w_orb*times-sol_phase)
+        cos_phi_s = (cos_phi_s_1-cos_phi_s_2)/(cos_phi_s_3*cos_phi_s_4)
+
+        # (C23)
+        sin_phi_s_1 = -np.sin(w_rot*times)*(np.sin(i)*np.cos(w_orb*times) - cos_theta_knot*np.cos(w_orb*times-sol_phase))
+        sin_phi_s_2 = np.cos(w_rot*times)*np.cos(i)*np.sin(w_orb*times-sol_phase)
+        sin_phi_s_3 = np.sqrt(1-(((np.sin(i))**2)*((np.cos(sol_phase))**2)))
+        sin_phi_s_4 = np.sin(w_orb*times-sol_phase)
+        sin_phi_s = (sin_phi_s_1-sin_phi_s_2)/(sin_phi_s_3*sin_phi_s_4)
+
+    else:
+        # (C4)
+        cos_phi_s_1 = np.cos(w_rot*times)*(np.sin(i)*np.cos(w_orb*times) - cos_theta_knot*np.sin(obq)*np.cos(w_orb*times-sol_phase))
+        cos_phi_s_2 = np.sin(w_rot*times)*(np.sin(i)*np.sin(w_orb*times)*np.cos(obq) - np.cos(i)*np.sin(obq)*np.sin(w_orb*times-sol_phase))
+        cos_phi_s_3 = np.sqrt(1-(np.cos(i)*np.cos(obq) + np.sin(i)*np.sin(obq)*np.cos(sol_phase))**2)
+        cos_phi_s_4 = np.sqrt(1-(((np.sin(obq))**2)*((np.cos(w_orb*times-sol_phase))**2)))
+        cos_phi_s = (cos_phi_s_1+cos_phi_s_2)/(cos_phi_s_3*cos_phi_s_4)
+
+        # (C5)
+        sin_phi_s_1 = -np.sin(w_rot*times)*(np.sin(i)*np.cos(w_orb*times) - cos_theta_knot*np.sin(obq)*np.cos(w_orb*times-sol_phase))
+        sin_phi_s_2 = np.cos(w_rot*times)*(np.sin(i)*np.sin(w_orb*times)*np.cos(obq) - np.cos(i)*np.sin(obq)*np.sin(w_orb*times-sol_phase))
+        sin_phi_s_3 = np.sqrt(1-(np.cos(i)*np.cos(obq)+np.sin(i)*np.sin(obq)*np.cos(sol_phase))**2)
+        sin_phi_s_4 = np.sqrt(1-(((np.sin(obq))**2)*((np.cos(w_orb*times-sol_phase))**2)))
+        sin_phi_s = (sin_phi_s_1+sin_phi_s_2)/(sin_phi_s_3*sin_phi_s_4)
+    return sin_phi_s, cos_phi_s
+
+def get_phi_o(colat, lng, w_rot, w_orb, obq, i, sol_phase, times, nside):
+    cos_phi_knot = np.cos(w_rot*times)
+    sin_phi_knot = -np.sin(w_rot*times)
+    return sin_phi_knot, cos_phi_knot
+
+
+sin_phi_s,cos_phi_s = get_phi_s(colat=colat_1, lng=lng, w_rot=w_rot,
+                                w_orb=w_orb, obq=obliquity, i=inclination, sol_phase=sol_phase,
+                                times=time, nside=nside)
+sin_phi_knot, cos_phi_knot = get_phi_o(colat=colat_1, lng=lng, w_rot = w_rot,
+                                       w_orb=w_orb, obq=obliquity, i=inclination, sol_phase=sol_phase,
+                                       times=time, nside=nside)
+
+phi_s, phi_knot = 0, 0
+
+# Using try-catch statements to obtain the values for phi_s and phi_knot
+try:
+    phi_s = np.arcsin(sin_phi_s)
+except:
+    phi_s = np.arccos(cos_phi_s)
+
+try:
+    phi_knot = np.arcsin(sin_phi_knot)
+except:
+    phi_knot = np.arccos(cos_phi_knot)
+
+
+# Now, obtaining the trig values for the numeric solution
+xi_0 = 0
+time = np.array([time])
+trigvals = viewgeom(times=time, wrot=w_rot, worb=w_orb, obq=obliquity, inc=inclination,
+                    xisol=sol_phase, xi0=xi_0)
+
+n_sin_phi_s = trigvals.item(6)
+n_cos_phi_s = trigvals.item(7)
+n_sin_phi_o = trigvals.item(2)
+n_cos_phi_o = trigvals.item(3)
+
+
+# Obtaining the values for phi_s and phi_o
+n_phi_s, n_phi_o = 0, 0
+
+try:
+    n_phi_s = np.arcsin(n_sin_phi_s)
+except:
+    n_phi_s = np.arccos(n_cos_phi_s)
+
+try:
+    n_phi_o = np.arcsin(n_sin_phi_o)
+except:
+    n_phi_o = np.arccos(n_cos_phi_o)
+
+# Now going to obtain theta_s and theta_o since there is perfet agreement
+# with the phi_s and phi_o
+
+def get_theta_s(colat, lng, w_rot, w_orb, obq, i, sol_phase, times, nside):
+    cos_theta_s = np.sin(obq)*np.cos((w_orb*times)-sol_phase)
+    sin_theta_s = np.sqrt(1-(((np.sin(obq))**2)*((np.cos((w_orb*times)-sol_phase))**2)))
+    return sin_theta_s, cos_theta_s
+
+def get_theta_o(colat, lng, w_rot, w_orb, obq, i, sol_phase, times, nside):
+    cos_theta_knot = (np.cos(i)*np.cos(obq)) + (np.sin(i)*np.sin(obq)*np.cos(sol_phase))
+    sin_theta_knot = np.sqrt(1-(cos_theta_knot**2))
+    return sin_theta_knot, cos_theta_knot
+
+
+sin_theta_s, cos_theta_s = get_theta_s(colat=colat_1, lng=lng, w_rot=w_rot,
+                                       w_orb=w_orb, obq=obliquity,
+                                       i=inclination, sol_phase=sol_phase,
+                                       times=time, nside=nside)
+sin_theta_o, cos_theta_o = get_theta_o(colat=colat_1, lng=lng, w_rot=w_rot,
+                                       w_orb=w_orb, obq=obliquity, i=inclination,
+                                       sol_phase=sol_phase, times=time, nside=nside)
+
+# Obtaining the values for theta_s and theta_o
+theta_s, theta_o = 0, 0
+
+try:
+    theta_s = np.arcsin(sin_theta_s)
+except:
+    theta_s = np.arccos(cos_theta_s)
+
+try:
+    theta_o = np.arcsin(sin_theta_o)
+except:
+    theta_o = np.arccos(cos_theta_o)
+
+# Obtaining the numeric solution's values for theta_s and theta_o
+n_sin_theta_o = trigvals.item(0)
+n_cos_theta_o = trigvals.item(1)
+n_sin_theta_s = trigvals.item(4)
+n_cos_theta_s = trigvals.item(5)
+
+# Obtaining the values for theta_s and theta_o
+
+n_theta_o, n_theta_s = 0,0
+try:
+    n_theta_o = np.arcsin(sin_theta_o)
+except:
+    n_theta_o = np.arccos(cos_theta_o)
+try:
+    n_theta_s = np.arcsin(sin_theta_s)
+except:
+    n_theta_s = np.arccos(cos_theta_s)
+
+
+
+# # Printing the results
+# print("Trig value comparison results:")
+# print("cos_theta_s [numeric]: {} | [analytic]: {}".format(n_cos_theta_s, cos_theta_s))
+# print("sin_theta_s [numeric]: {} | [analytic]: {}".format(n_sin_theta_s, sin_theta_s))
+# print("theta_s [numeric]: {}     | [analytic]: {}".format(n_theta_s, theta_s))
+# print("sin_theta_o [numeric]: {} | [analytic]: {}".format(n_sin_theta_o, sin_theta_o))
+# print("cos_theta_o [numeric]: {} | [analytic]: {}".format(n_cos_theta_o, cos_theta_o))
+# print("theta_o [numeric]: {}     | [analytic]: {}".format(n_theta_o, theta_o))
+# print("cos_phi_s: [numeric]: {}  | [analytic]: {}".format(n_cos_phi_s, cos_phi_s))
+# print("sin_phi_s: [numeric]: {}  | [analytic]: {}".format(n_sin_phi_s, sin_phi_s))
+# print("phi_s: [numeric]: {}      | [analytic]: {}".format(n_phi_s, phi_s))
+# print("cos_phi_o: [numeric]: {}  | [analytic]: {}".format(n_cos_phi_o, cos_phi_knot))
+# print("sin_phi_o: [numeric]: {}  | [analytic]: {}".format(n_sin_phi_o, sin_phi_knot))
+
+is_close_cos_theta_s = math.isclose(n_cos_theta_s, cos_theta_s, rel_tol=1e-5)
+is_close_sin_theta_s = math.isclose(n_sin_theta_s, sin_theta_s, rel_tol=1e-5)
+is_close_theta_s = math.isclose(n_theta_s, theta_s, rel_tol=1e-5)
+
+is_close_sin_theta_o = math.isclose(n_sin_theta_o, sin_theta_o, rel_tol=1e-5)
+is_close_cos_theta_o = math.isclose(n_cos_theta_o, cos_theta_o, rel_tol=1e-5)
+is_close_theta_o = math.isclose(n_theta_o, theta_o, rel_tol=1e-5)
+
+is_close_cos_phi_s = math.isclose(n_cos_phi_s, cos_phi_s, rel_tol=1e-5)
+is_close_sin_phi_s = math.isclose(n_sin_phi_s, sin_phi_s, rel_tol=1e-5)
+is_close_phi_s = math.isclose(n_phi_s, phi_s, rel_tol=1e-5)
+
+is_close_cos_phi_o = math.isclose(n_cos_phi_o, cos_phi_knot, rel_tol=1e-5)
+is_close_sin_phi_o = math.isclose(n_sin_phi_o, sin_phi_knot, rel_tol=1e-5)
+is_close_phi_o = math.isclose(n_phi_o, phi_knot, rel_tol=1e-5)
+
+boolean= is_close_theta_s and is_close_theta_o and is_close_phi_s and is_close_phi_o
+print("Do all the angles agree? {}".format(boolean))
