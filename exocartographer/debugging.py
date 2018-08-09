@@ -12,6 +12,7 @@ import astropy.units as u
 import matplotlib.gridspec  as gridspec
 from exocartographer import viewgeom, kernel
 import math
+from more_debugging import get_visibility_illum, get_points
 
 # Helper Functions
 
@@ -791,3 +792,41 @@ is_close_phi_o = math.isclose(n_phi_o, phi_knot, rel_tol=1e-5)
 
 boolean= is_close_theta_s and is_close_theta_o and is_close_phi_s and is_close_phi_o
 print("Do all the angles agree? {}".format(boolean))
+
+# Now, going to produce a contour map for the *NUMERIC* solution
+
+phi_rot = 0
+times = 12
+V, I = get_visibility_illum(p_rotation=p_rotation, p_orbit=p_orbit, phi_orb=phi_orb,
+                            inclination=inclination, solstice_phase=sol_phase,
+                            obliquity=obliquity, phi_rot =phi_rot, times=times)
+K = V*I
+
+# Obtaining the sub-stellar and sub-observer points
+nos, nss = get_points(p_rotation=p_rotation, p_orbit=p_orbit, phi_orb=phi_orb,
+                      inclination=inclination, solstice_phase=sol_phase, obliquity=obliquity,
+                      phi_rot=phi_rot, times=times)
+
+# Now converting the cartesian coordinates to spherical coordinates
+
+def cartesian_to_spherical(cartesian):
+    x = cartesian.item(0)
+    y = cartesian.item(1)
+    z = cartesian.item(2)
+
+    r = np.sqrt(x*x + y*y + z*z)
+    theta = np.arccos(z/r)
+    phi = np.arctan(y/x)
+    return theta, phi
+
+nos_spherical_theta, nos_spherical_phi = cartesian_to_spherical(nos)
+nss_spherical_theta, nss_spherical_phi = cartesian_to_spherical(nss)
+
+
+# Printing everything together:
+print("Sub-stellar point: ")
+print("Theta_s: [Analytic]: {} [Numeric]: {}".format(theta_s, nss_spherical_theta))
+print("Phi_s: [Analytic]: {} [Numeric]: {}".format(phi_s, nss_spherical_phi))
+print("Sub-observer point: ")
+print("Theta_o: [Analytic]: {} [Numeric]: {}".format(theta_o, nos_spherical_theta))
+print("Phi_o: [Analytic]: {} [Numeric]: {}".format(phi_knot, nos_spherical_phi))
