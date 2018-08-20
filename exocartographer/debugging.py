@@ -372,6 +372,7 @@ colat_5 = a-lat_5
 
 # Setting longitude to be -pi/2
 one_lng = Angle(-(0.8)*u.rad)
+one_lng = Angle((-np.pi/2)*u.rad)
 
 # Obtaining the bright spot for each point
 bs_1 = map.lonlat_to_healpix([one_lng]*u.rad, [lat_1]*u.rad)
@@ -760,19 +761,20 @@ except:
 
 
 
-# # Printing the results
-# print("Trig value comparison results:")
-# print("cos_theta_s [numeric]: {} | [analytic]: {}".format(n_cos_theta_s, cos_theta_s))
-# print("sin_theta_s [numeric]: {} | [analytic]: {}".format(n_sin_theta_s, sin_theta_s))
-# print("theta_s [numeric]: {}     | [analytic]: {}".format(n_theta_s, theta_s))
-# print("sin_theta_o [numeric]: {} | [analytic]: {}".format(n_sin_theta_o, sin_theta_o))
-# print("cos_theta_o [numeric]: {} | [analytic]: {}".format(n_cos_theta_o, cos_theta_o))
-# print("theta_o [numeric]: {}     | [analytic]: {}".format(n_theta_o, theta_o))
-# print("cos_phi_s: [numeric]: {}  | [analytic]: {}".format(n_cos_phi_s, cos_phi_s))
-# print("sin_phi_s: [numeric]: {}  | [analytic]: {}".format(n_sin_phi_s, sin_phi_s))
-# print("phi_s: [numeric]: {}      | [analytic]: {}".format(n_phi_s, phi_s))
-# print("cos_phi_o: [numeric]: {}  | [analytic]: {}".format(n_cos_phi_o, cos_phi_knot))
-# print("sin_phi_o: [numeric]: {}  | [analytic]: {}".format(n_sin_phi_o, sin_phi_knot))
+# Printing the results
+print("Trig value comparison results:")
+print("cos_theta_s [numeric]: {} | [analytic]: {}".format(n_cos_theta_s, cos_theta_s))
+print("sin_theta_s [numeric]: {} | [analytic]: {}".format(n_sin_theta_s, sin_theta_s))
+print("theta_s [numeric]: {}     | [analytic]: {}".format(n_theta_s, theta_s))
+print("sin_theta_o [numeric]: {} | [analytic]: {}".format(n_sin_theta_o, sin_theta_o))
+print("cos_theta_o [numeric]: {} | [analytic]: {}".format(n_cos_theta_o, cos_theta_o))
+print("theta_o [numeric]: {}     | [analytic]: {}".format(n_theta_o, theta_o))
+print("cos_phi_s: [numeric]: {}  | [analytic]: {}".format(n_cos_phi_s, cos_phi_s))
+print("sin_phi_s: [numeric]: {}  | [analytic]: {}".format(n_sin_phi_s, sin_phi_s))
+print("phi_s: [numeric]: {}      | [analytic]: {}".format(n_phi_s, phi_s))
+print("cos_phi_o: [numeric]: {}  | [analytic]: {}".format(n_cos_phi_o, cos_phi_knot))
+print("sin_phi_o: [numeric]: {}  | [analytic]: {}".format(n_sin_phi_o, sin_phi_knot))
+print("phi_o: [numeric]: {}      | [analytic]: {}".format(n_phi_o, phi_knot))
 
 is_close_cos_theta_s = math.isclose(n_cos_theta_s, cos_theta_s, rel_tol=1e-5)
 is_close_sin_theta_s = math.isclose(n_sin_theta_s, sin_theta_s, rel_tol=1e-5)

@@ -9,6 +9,10 @@ import exocartographer
 import math
 import healpy as hp
 
+
+# The aim of this code is [write aim here]
+
+
 # First, some helper functions. cos_insolation is the equivalent to
 # the illumination for the analytic solution. cos_obs is the equivalent
 # to the visibility for the analytic solution.
