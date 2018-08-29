@@ -22,15 +22,6 @@ def analytic_lightcurve_2(colat, lng, w_rot, w_orb, obq, i, sol_phase, times, ns
     cos_phi_s = 0
     sin_phi_s = 0
 
-    print("Inclination pi/2?")
-    print(i==np.pi/2)
-    print("Inclination 0?")
-    print(i==0)
-    print("Obliquity 0?")
-    print(obq == 0)
-    print("Obliquity pi/2?")
-    print(obq == np.pi/2)
-
     if i == np.pi/2:
         # (C1) Orbital Inclination
         cos_theta_knot = np.sin(obq)*np.cos(sol_phase)
@@ -112,23 +103,21 @@ def analytic_lightcurve_2(colat, lng, w_rot, w_orb, obq, i, sol_phase, times, ns
         sin_phi_s = (sin_phi_s_1+sin_phi_s_2)/(sin_phi_s_3*sin_phi_s_4)
 
     # Delta Maps
-    phi_knot = -w_rot*times
+    s_phi_o = -np.sin(w_rot*times)
+    phi_o = np.arcsin(s_phi_o)
+    phi_s = np.arcsin(sin_phi_s)
+    s_th_s = np.sqrt(1 - (((np.sin(obq)) ** 2) * ((np.cos((w_orb * times) - sol_phase)) ** 2)))
+    th_s = np.arcsin(s_th_s)
+    c_th_o = (np.cos(i)*np.cos(obq)) + (np.sin(i)*np.sin(obq)*np.cos(sol_phase))
+    th_o = np.full_like(times, np.arccos(c_th_o))
 
-    cos_phi_phi_s = np.cos(phi)*cos_phi_s + np.sin(phi)*sin_phi_s
-    cos_phi_phi_knot = np.cos(phi)*cos_phi_knot + np.sin(phi)*sin_phi_knot
+    arr_theta = np.full_like(times, theta)
+    arr_phi = np.full_like(times, phi)
 
-    # (4)
-    Inz = np.sin(theta)*sin_theta_s*cos_phi_phi_s + np.cos(theta)*cos_theta_s
-    phi = np.full_like(phi_knot, phi)
-    print(phi_knot)
-    Inz = np.sin(theta)*sin_theta_knot*np.cos(phi-phi_knot)+np.cos(theta)*cos_theta_knot
-
-    # (5)
-    Vnz = np.sin(theta)*sin_theta_knot*cos_phi_phi_knot + np.cos(theta)*cos_theta_knot
+    Vnz = (np.sin(theta) * np.sin(th_o) * np.cos(arr_phi - phi_o)) + (np.cos(arr_theta) * np.cos(th_o))
+    Inz = (np.sin(theta) * np.sin(th_s) * np.cos(arr_phi - phi_s)) + (np.cos(arr_theta) * np.cos(th_s))
 
     # (2)
-    z = np.zeros_like(Inz)
-    kernel = (1/np.pi)*(np.maximum(Vnz, z))*(np.maximum(Inz, z))
-    # degrees_to_str = (1/3282.8)
-    domega = hp.nside2pixarea(nside=nside, degrees=False)*np.sin(theta)
-    return kernel*domega
+    Vnz[Vnz < 0] = 0
+    Inz[Inz < 0] = 0
+    return ((Vnz*Inz)/np.pi)

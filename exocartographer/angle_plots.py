@@ -62,7 +62,7 @@ p_rotation = 23.934
 p_orbit = 365.256363 * 24.0
 
 # Creating an evenly-spaced time array
-times = np.linspace(start=0.0, stop=24.0, num=1400)
+times = np.linspace(start=0.0, stop=365*24.0, num=14000)
 measurement_std = 0.001
 
 # Setting the input parameters :
@@ -89,7 +89,7 @@ colat_1 = a-lat_1
 bs = map.lonlat_to_healpix([lng]*u.rad, [lat_1]*u.rad)
 
 # Drawing the simulated map for the bright spot
-sim_map = draw_albedo_map(nside=nside, view_map=True, bright_spot=bs)
+sim_map = draw_albedo_map(nside=nside, view_map=False, bright_spot=bs)
 
 
 # Defining all the angles that we need :
@@ -195,7 +195,9 @@ def get_phi_s( w_rot, w_orb, obq, i, sol_phase, times):
 # Same issue as earlier with this one, so I just re-wrote the function
 # so that it does not get modded.
 def get_phi_o(w_rot, times):
-    return w_rot*times
+    s_phi_o = -np.sin(w_rot*times)
+    phi_o = np.arcsin(s_phi_o)
+    return phi_o
 
 def get_theta_s(obq, w_orb, times, sol_phase):
     sin_theta_s = np.sqrt(1 - (((np.sin(obq)) ** 2) * ((np.cos((w_orb * times) - sol_phase)) ** 2)))
@@ -214,12 +216,6 @@ a_th_s = get_theta_s(obq=obliquity, w_orb=w_orb, times=times,
                      sol_phase=sol_phase)
 a_th_o = get_theta_o(i=inclination, obq=obliquity, sol_phase=sol_phase, times=times)
 
-print("Analytic : ")
-print(a_phi_s)
-print(a_phi_o)
-print(a_th_s)
-print(a_th_o)
-
 
 # NUMERIC SOLUTION'S VECTOR ROTATION CODE :
 xi_0 = 0
@@ -232,17 +228,61 @@ ea_th_s = np.arcsin(trigvals[:,4])  #4th
 ea_th_o = np.arcsin(trigvals[:,0])  #0th
 
 
-print("Analytic - exocartographer")
-print(ea_phi_s)
-print(ea_phi_o)
-print(ea_th_s)
-print(ea_th_o)
+# EXOCARTOGRAPHER'S NUMERIC VERSION :
+nos, nss = get_points(p_rotation = p_rotation, p_orbit=p_orbit,
+                      phi_orb=phi_orb, inclination=inclination,
+                      solstice_phase=sol_phase, obliquity=obliquity,
+                      phi_rot=phi_orb, times=times)
+
+# Extracting the th_o angle
+c_th_o = nos[:,2]
+e_th_o = np.arccos(c_th_o)
+
+# Extracting the th_s angle
+c_th_s = nss[:,2]
+e_th_s = np.arccos(c_th_s)
 
 
+# Extracting the phi_o angle
+s_th_o = np.sin(e_th_o)
+e_phi_o = np.arcsin(nos[:,1]/s_th_o)
 
-# EXOCARTOGRAPHER'S ANALYTIC VERSION :
-
-
-
+# Extracting the phi_s angle
+s_th_s = np.sin(e_th_s)
+e_phi_s = np.arcsin(nss[:,1]/s_th_s)
 
 # Plotting everything together
+
+f, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, sharex=True, sharey=True)
+ax1.plot(times, ea_phi_s, label='analytic - exocartographer')
+ax1.plot(times, a_phi_s, label='analytic - my code')
+ax1.plot(times, e_phi_s, label='numeric')
+ax1.grid(color='#e6e8ed', linestyle='-', linewidth=2)
+ax1.legend()
+ax1.set_ylabel(r'$\phi_s$')
+
+ax2.plot(times, ea_phi_o, label='analytic - exocartographer')
+ax2.plot(times, a_phi_o, label='analytic - my code')
+ax2.plot(times, e_phi_o, label='numeric')
+ax2.grid(color='#e6e8ed', linestyle='-', linewidth=2)
+ax2.legend()
+ax2.set_ylabel(r'$\phi_o$')
+
+ax3.plot(times, ea_th_s, label='analytic - exocartographer')
+ax3.plot(times, a_th_s, label='analytic - my code')
+ax3.plot(times, e_th_s, label='numeric')
+ax3.grid(color='#e6e8ed', linestyle='-', linewidth=2)
+ax3.legend()
+ax3.set_ylabel(r'$\theta_s$')
+
+ax4.plot(times, ea_th_o, label='analytic - exocartographer')
+ax4.plot(times, a_th_o, label='analytic - my code')
+ax4.plot(times, e_th_o, label='numeric')
+ax4.grid(color='#e6e8ed', linestyle='-', linewidth=2)
+ax4.legend()
+ax4.set_ylabel(r'$\theta_o$')
+ax4.set_xlabel('time(h)')
+
+f.tight_layout()
+f.subplots_adjust(hspace=0)
+plt.show()
