@@ -10,7 +10,8 @@ import math
 import healpy as hp
 
 
-# The aim of this code is [write aim here]
+# The aim of this code is to extract the substellar and subobserver angles from the
+# numeric solution's code.
 
 
 # First, some helper functions. cos_insolation is the equivalent to

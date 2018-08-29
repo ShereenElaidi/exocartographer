@@ -13,6 +13,7 @@ import matplotlib.gridspec  as gridspec
 from exocartographer import viewgeom, kernel
 import math
 from more_debugging import get_visibility_illum, get_points
+import pdb
 
 # Helper Functions
 
@@ -347,9 +348,9 @@ measurement_std = 0.001
 # Setting the input parameters
 w_rot = 2*np.pi/p_rotation
 w_orb = 2*np.pi/p_orbit
-inclination = np.pi/4
-obliquity = np.pi/6
-sol_phase = np.pi/6
+inclination = np.pi/3
+obliquity = np.pi/3
+sol_phase = np.pi/3
 
 # Using the relation from the code here
 phi_orb = 0                     # xi_0
@@ -660,6 +661,7 @@ def get_phi_o(colat, lng, w_rot, w_orb, obq, i, sol_phase, times, nside):
     return sin_phi_knot, cos_phi_knot
 
 
+
 sin_phi_s,cos_phi_s = get_phi_s(colat=colat_1, lng=lng, w_rot=w_rot,
                                 w_orb=w_orb, obq=obliquity, i=inclination, sol_phase=sol_phase,
                                 times=time, nside=nside)
@@ -832,3 +834,141 @@ print("Phi_s: [Analytic]: {} [Numeric]: {}".format(phi_s, nss_spherical_phi))
 print("Sub-observer point: ")
 print("Theta_o: [Analytic]: {} [Numeric]: {}".format(theta_o, nos_spherical_theta))
 print("Phi_o: [Analytic]: {} [Numeric]: {}".format(phi_knot, nos_spherical_phi))
+
+# Now, to make plots showing the variation of the angles in time.
+# Doing the same thing as the code above, except I am treating the trig
+# values as arrays
+
+
+times = np.linspace(start=0.0, stop=365*24.0, num=14000)
+
+
+array_sin_phi_s, array_cos_phi_s = get_phi_s(colat=colat_1, lng=lng, w_rot=w_rot,
+                            w_orb=w_orb, obq=obliquity, i=inclination, sol_phase=sol_phase,
+                            times=times, nside=nside)
+
+array_sin_phi_knot, array_cos_phi_knot = get_phi_o(colat=colat_1, lng=lng, w_rot=w_rot,
+                                                   w_orb=w_orb, obq=obliquity, i=inclination,
+                                                   sol_phase=sol_phase, times=times, nside=nside)
+
+analytic_array_phi_s = np.zeros_like(array_sin_phi_s)
+analytic_array_phi_knot = np.zeros_like(array_sin_phi_knot)
+
+# Using try-catch statements to obtain the values for phi_s and phi_knot
+try:
+    analytic_array_phi_s = np.arcsin(array_sin_phi_s)
+except:
+    analytic_array_phi_s = np.arccos(array_cos_phi_s)
+
+try:
+    analytic_array_phi_knot = np.arcsin(array_sin_phi_knot)
+except:
+    analytic_array_phi_knot = np.arccos(array_cos_phi_knot)
+
+
+# Obtaining the theta_s and theta_o values for the analytic solution
+analytic_array_sin_theta_s, analytic_array_cos_theta_s = get_theta_s(
+    colat=colat_1, lng=lng, w_rot=w_rot, w_orb=w_orb, obq=obliquity,
+    i=inclination, sol_phase=sol_phase, times=times, nside=nside
+)
+
+analytic_array_sin_theta_o, analytic_array_cos_theta_o = get_theta_o(
+    colat=colat_1, lng=lng, w_rot=w_rot, w_orb=w_orb, obq=obliquity,
+    i=inclination, sol_phase=sol_phase, times=times, nside=nside
+)
+
+# Obtaining the values for theta_s and theta_o
+
+analytic_array_theta_s = np.zeros_like(analytic_array_sin_theta_o)
+analytic_array_theta_o = np.zeros_like(analytic_array_cos_theta_o)
+
+try:
+    analytic_array_theta_s = np.arcsin(analytic_array_sin_theta_s)
+except:
+    analytic_array_theta_s = np.arccos(analytic_array_cos_theta_s)
+
+try:
+    analytic_array_theta_o = np.arcsin(analytic_array_sin_theta_o)
+except:
+    analytic_array_theta_s = np.arccos(analytic_array_cos_theta_o)
+
+analytic_array_theta_o = np.full_like(times, analytic_array_theta_o)
+
+
+# Obtaining the numeric points
+
+array_nos, array_nss = get_points(p_rotation=p_rotation, p_orbit=p_orbit,
+                                  phi_orb=phi_orb, inclination=inclination,
+                                  solstice_phase=sol_phase, obliquity=obliquity,
+                                  phi_rot=phi_rot, times=times)
+
+def array_cartesian_to_spherical(cartesian):
+    x = cartesian[:,0]
+    y = cartesian[:,1]
+    z = cartesian[:,2]
+
+    r = np.sqrt(x*x + y*y + z*z)
+    theta = np.arccos(z/r)
+    phi = np.arctan(y/x)
+
+    return theta, phi
+
+# pdb.set_trace()
+array_nos_spherical_theta, array_nos_spherical_phi = array_cartesian_to_spherical(array_nos)
+array_nss_spherical_theta, array_nss_spherical_phi = array_cartesian_to_spherical(array_nss)
+
+
+pi_minus_w = np.arccos(np.sin(inclination)*np.cos(w_orb*times))
+print(pi_minus_w)
+
+phi_knot = (-w_rot*times)%(2*np.pi)
+
+
+# phi_s = theta_knot + theta_s + phi_knot
+# is_close_cos_theta_s = math.isclose(n_cos_theta_s, cos_theta_s, rel_tol=1e-5)
+sum = ((analytic_array_theta_o + analytic_array_theta_s + phi_knot)%(2*np.pi)) - np.pi
+difference = analytic_array_phi_s - sum
+
+sum_num = array_nos_spherical_theta + array_nss_spherical_theta + array_nos_spherical_phi
+diff_num = array_nss_spherical_phi - sum_num
+
+
+# Making the plot of all the time-varying angles
+f, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, sharex=True, sharey=True)
+ax1.plot(times, analytic_array_theta_s, label='analytic')
+ax1.plot(times, array_nss_spherical_theta, label='numeric')
+ax1.grid(color='#e6e8ed', linestyle='-', linewidth=2)
+ax1.legend()
+ax1.set_ylabel(r'$\theta_s$')
+
+ax2.plot(times, analytic_array_phi_s, label='analytic')
+ax2.plot(times, array_nss_spherical_phi, label='numeric')
+# ax2.plot(times, sum, label='theoretical')
+ax2.grid(color='#e6e8ed', linestyle='-', linewidth=2)
+ax2.legend()
+ax2.set_ylabel(r'$\phi_s$')
+
+ax3.plot(times, analytic_array_theta_o, label='analytic')
+ax3.plot(times, array_nos_spherical_theta, label='numeric')
+ax3.grid(color='#e6e8ed', linestyle='-', linewidth=2)
+ax3.legend()
+ax3.set_ylabel(r'$\theta_o$')
+
+ax4.plot(times, analytic_array_phi_knot, label='analytic')
+ax4.plot(times, array_nos_spherical_phi, label='numeric')
+# ax4.plot(times, analytic_array_phi_knot, label='analytic')
+# ax4.plot(times, array_nos_spherical_phi, label='numeric')
+# ax4.plot(times, -w_rot*times, label='truth')
+ax4.grid(color='#e6e8ed', linestyle='-', linewidth=2)
+ax4.legend()
+ax4.set_ylabel(r'$\phi_o$')
+ax4.set_xlabel('time(h)')
+
+ax5.plot(times, difference, label='analytic')
+ax5.plot(times, diff_num, label='numeric')
+ax5.grid(color='#e6e8ed', linestyle='-', linewidth=2)
+ax5.legend()
+ax5.set_ylabel('residuals')
+f.tight_layout()
+f.subplots_adjust(hspace=0)
+plt.show()

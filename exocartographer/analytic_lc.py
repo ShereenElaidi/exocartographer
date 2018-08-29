@@ -112,11 +112,16 @@ def analytic_lightcurve_2(colat, lng, w_rot, w_orb, obq, i, sol_phase, times, ns
         sin_phi_s = (sin_phi_s_1+sin_phi_s_2)/(sin_phi_s_3*sin_phi_s_4)
 
     # Delta Maps
+    phi_knot = -w_rot*times
+
     cos_phi_phi_s = np.cos(phi)*cos_phi_s + np.sin(phi)*sin_phi_s
     cos_phi_phi_knot = np.cos(phi)*cos_phi_knot + np.sin(phi)*sin_phi_knot
 
     # (4)
     Inz = np.sin(theta)*sin_theta_s*cos_phi_phi_s + np.cos(theta)*cos_theta_s
+    phi = np.full_like(phi_knot, phi)
+    print(phi_knot)
+    Inz = np.sin(theta)*sin_theta_knot*np.cos(phi-phi_knot)+np.cos(theta)*cos_theta_knot
 
     # (5)
     Vnz = np.sin(theta)*sin_theta_knot*cos_phi_phi_knot + np.cos(theta)*cos_theta_knot
